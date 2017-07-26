@@ -1,0 +1,63 @@
+/*
+ *  Copyright (C) 2017  Simao Gomes Viana
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#define EX1
+#define EXAMPLE2
+#define EXAMPLE3
+#define EXAMPLE4 You know
+
+#define HOW_I_AM I'm fine
+#define nice-thing-to-replace "don't ask me!"
+
+#undef EXAMPLE3
+
+I see
+
+#ifdef EX1
+cool
+#endif
+
+#ifdef EXAMPLE5
+bananas
+#else
+apples
+#endif
+
+#ifdef EXAMPLE2
+#if EXAMPLE4 == You know
+over
+#endif
+#if EXAMPLE4 == You don't know
+... or not
+#endif
+#if EXAMPLE4 != jelly
+there
+#endif
+#endif
+
+How are you?
+HOW_I_AM
+
+#ifdef EX1
+#ifndef EXAMPLE5
+#ifdef EXAMPLE4
+  printf(nice-thing-to-replace)
+#endif
+#endif
+#endif
+
+YOU_NEVER_KNOW_HOW_I_AM
