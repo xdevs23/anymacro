@@ -20,7 +20,7 @@ const readline = require('readline')
 const fs = require('fs')
 const path = require('path')
 
-const version = '1.0.0'
+const version = '1.1.0'
 
 function argv (ix) {
   return process.argv[2 + ix]
