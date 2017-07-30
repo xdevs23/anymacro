@@ -253,37 +253,37 @@ rl.on('line', function (rawline) {
         rl.close()
         break
     }
-  } else {
-    if (skipCount == 0) {
-      var resolvedLine = rawline.valueOf()
-      defines.forEach((e) => {
-        var regex = new RegExp("(\\W|^)" + e.name + "(\\W|$)", "g")
-        if (rawline.match(regex)) {
-          if (debug) {
-            console.log(` Current line has define ${e.name}`)
-          }
-          var matches = regex.exec(resolvedLine)
-          var newmatches = []
-          var i = 0
-          matches.forEach((match) => {
-            if (match.length >= e.name.length) {
-              if (debug) {
-                console.log(`   Match ${match}`)
-              }
-              newmatches.push([match.replace(e.name, e.value), i])
-            }
-            i++
-          })
-          i = 0
-          newmatches.forEach((match) => {
-            resolvedLine =
-              resolvedLine.replace(matches[newmatches[i][1]], newmatches[i][0])
-            i++
-          })
+  } else if (line.substring(0, 2) == "//") {
+    // Simply do nothing. Skip it.
+  } else if (skipCount == 0) {
+    var resolvedLine = rawline.valueOf()
+    defines.forEach((e) => {
+      var regex = new RegExp("(\\W|^)" + e.name + "(\\W|$)", "g")
+      if (rawline.match(regex)) {
+        if (debug) {
+          console.log(` Current line has define ${e.name}`)
         }
-      })
-      fs.appendFileSync(outputfile, `${resolvedLine}\n`)
-    }
+        var matches = regex.exec(resolvedLine)
+        var newmatches = []
+        var i = 0
+        matches.forEach((match) => {
+          if (match.length >= e.name.length) {
+            if (debug) {
+              console.log(`   Match ${match}`)
+            }
+            newmatches.push([match.replace(e.name, e.value), i])
+          }
+          i++
+        })
+        i = 0
+        newmatches.forEach((match) => {
+          resolvedLine =
+            resolvedLine.replace(matches[newmatches[i][1]], newmatches[i][0])
+          i++
+        })
+      }
+    })
+    fs.appendFileSync(outputfile, `${resolvedLine}\n`)
   }
 })
 

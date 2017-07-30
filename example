@@ -47,6 +47,7 @@ over
 #if EXAMPLE4 != jelly
 there
 #endif
+// This is a comment
 #endif
 
 How are you?
