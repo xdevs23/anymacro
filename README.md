@@ -10,7 +10,7 @@ If you wish to use node directly, feel free to do so as well.
 
 ```
 sudo npm install -g pkg
-pkg -t node8-linux-x86 index.js
+pkg -t node8-linux-x86 js/index.js
 ./index
 ```
 
@@ -23,5 +23,5 @@ You can also find all available options simply by executing `pkg` without parame
 Using node is fairly simple:
 
 ```
-node index.js
+node js/index.js
 ```
