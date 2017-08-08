@@ -6,3 +6,6 @@ This is from extra.txt
 
   Importing extra2
 #import extra2.txt
+
+Below this should be an include line (not import!)
+#include <stdio.h>

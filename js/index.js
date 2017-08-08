@@ -143,10 +143,18 @@ function createDefineFromLine (line, rl, linenum) {
 function processLine (rawline, inputfile, outputfile, rl, linenum, afterPause) {
   let line = rawline.trim()
   let define, name, isNot
-  if (line[0] == '#') {
+  let printLine = true
+  if (line.substring(0, 2) == "//") {
+    return
+  }
+  if ((() => { if (line[0] == '#') {
     let lineIndexOfSpace = line.indexOf(' ')
     let macro = line.substring(1, lineIndexOfSpace !== -1 ? lineIndexOfSpace
                                                           : line.length)
+    if (macro == 'include') {
+      return
+    }
+    printLine = false
     if (macro == 'endif') {
       if (skipCount > 0) skipCount--
       expectEndifCount--
@@ -255,9 +263,8 @@ function processLine (rawline, inputfile, outputfile, rl, linenum, afterPause) {
         rl.close()
         break
     }
-  } else if (line.substring(0, 2) == "//") {
-    // Simply do nothing. Skip it.
-  } else if (skipCount == 0) {
+  }})() === true) return true
+  if (skipCount == 0 && printLine) {
     let resolvedLine = rawline.valueOf()
     defines.forEach((e) => {
       let regex = new RegExp("(\\W|^)" + e.name + "(\\W|$)", "g")

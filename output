@@ -32,6 +32,9 @@ This is extra2!
 
   Below this line it should not say OH NO!
 
+Below this should be an include line (not import!)
+#include <stdio.h>
+
 I see
 
 cool
