@@ -6,6 +6,15 @@ It's currently written in JavaScript and it should be compiled using [pkg](https
 
 If you wish to use node directly, feel free to do so as well.
 
+## Binaries
+
+View the [releases](https://github.com/xdevs23/anymacro/releases).
+From version 1.1.0 on, there are binaries for Linux, macOS and Windows.
+Note that only the Linux binary has been tested by me, so if the other ones
+do not work please [create a new issue](https://github.com/xdevs23/anymacro/issues/new)
+and explain what exactly is wrong and the platform you tried to use the binary
+on, and of course, which binary you used.
+
 ## pkg
 
 ```
