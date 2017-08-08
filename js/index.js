@@ -22,6 +22,8 @@ const path = require('path')
 
 const version = '1.1.0'
 
+var rc = 0
+
 function argv (ix) {
   return process.argv[2 + ix]
 } 
@@ -71,13 +73,8 @@ function fileExists (filename) {
   }
 }
 
-var inputfile = argv(0)
-var outputfile = path.resolve(argv(1))
-
-if (!fileExists(inputfile)) {
-  console.error(`Error: File ${inputfile} does not exist`)
-  process.exit(1)
-}
+var mInputfile = argv(0)
+var mOutputfile = path.resolve(argv(1))
 
 function Define (name, value) {
   this.name = name
@@ -102,6 +99,10 @@ function defineExists (name) {
 function removeDefine (name) {
   defines.forEach((e) => {
     if (e.name == name) {
+      if (debug) {
+        console.log(`Splicing ${e.name} out of defines ` +
+                    `on index ${defines.indexOf(e)}`)
+      }
       defines.splice(defines.indexOf(e), 1)
       return
     }
@@ -119,7 +120,7 @@ function getDefine (name) {
   return result
 }
 
-function createDefineFromLine (line, rl) {
+function createDefineFromLine (line, rl, linenum) {
   var afterdef = line.substring(line.indexOf(' ') + 1, line.length)
   if (debug) {
     console.log(` afterdef: ${afterdef}`)
@@ -139,23 +140,12 @@ function createDefineFromLine (line, rl) {
   return new Define(name, value)
 }
 
-if (fileExists(outputfile)) {
-  fs.unlinkSync(outputfile)
-}
-
-const rl = readline.createInterface({
-  input: fs.createReadStream(inputfile)
-})
-
-var linenum = 0
-var rc = 0
-
-rl.on('line', function (rawline) {
-  linenum++
-  var line = rawline.trim()
+function processLine (rawline, inputfile, outputfile, rl, linenum, afterPause) {
+  let line = rawline.trim()
+  let define, name, isNot
   if (line[0] == '#') {
-    var lineIndexOfSpace = line.indexOf(' ')
-    var macro = line.substring(1, lineIndexOfSpace !== -1 ? lineIndexOfSpace
+    let lineIndexOfSpace = line.indexOf(' ')
+    let macro = line.substring(1, lineIndexOfSpace !== -1 ? lineIndexOfSpace
                                                           : line.length)
     if (macro == 'endif') {
       if (skipCount > 0) skipCount--
@@ -172,20 +162,20 @@ rl.on('line', function (rawline) {
     }
     switch (macro) {
       case 'define':
-        var define = createDefineFromLine(line, rl)
-          if (defineExists(define.name)) {
-            console.error(`Error: Define ${define.name} already exists, line ${linenum}`)
-            rc = 2
-            rl.close()
-            break
-          }
+        define = createDefineFromLine(line, rl, linenum)
+        if (defineExists(define.name)) {
+          console.error(`Error: Define ${define.name} already exists, line ${linenum}`)
+          rc = 2
+          rl.close()
+          break
+        }
         defines.push(define)
         if (debug) {
           console.log(` Added define ${JSON.stringify(define)}`)
         }
         break
       case 'undef':
-        var define = createDefineFromLine(line, rl)
+        define = createDefineFromLine(line, rl, linenum)
         if (!defineExists(define.name)) {
           console.error(`Error: Define ${define.name} does not exist, line ${linenum}`)
           console.error(`  ${rawline}`)
@@ -193,15 +183,15 @@ rl.on('line', function (rawline) {
           rl.close()
           break
         }
-        removeDefine(define)
+        removeDefine(define.name)
         if (debug) {
           console.log(` Removed define "${define.name}"`)
         }
         break
       case 'ifndef':
-        var isNot = true
+        isNot = true
       case 'ifdef':
-        var name = line.substring(line.indexOf(' ') + 1, line.length)
+        name = line.substring(line.indexOf(' ') + 1, line.length)
         expectEndifCount++
         if (defineExists(name)) {
           if (isNot) skipCount++
@@ -217,16 +207,16 @@ rl.on('line', function (rawline) {
         break
       case 'if':
         expectEndifCount++
-        var notEquals = line.match(/[!]=/g) != null
+        let notEquals = line.match(/[!]=/g) != null
         if (debug && notEquals) {
           console.log('  This is a not-equals if')
         }
-        var name = line.substring(line.indexOf(' ') + 1,
+        name = line.substring(line.indexOf(' ') + 1,
                                     line.indexOf((notEquals ? '!' : '=') + '='))
         name = name.trim()
-        var expectedValue = line.substring(
+        let expectedValue = line.substring(
           line.indexOf((notEquals ? '!' : '=') + '=') + 3, line.length)
-        var define = getDefine(name)
+        define = getDefine(name)
         if (define === null) {
           console.error(`Error: Define ${name} does not exist, line ${linenum}`)
           console.error(`  ${rawline}`)
@@ -246,6 +236,18 @@ rl.on('line', function (rawline) {
           }
         }
         break
+      case 'import':
+        let filename = line.substring(line.lastIndexOf(' ') + 1, line.length)
+        if (afterPause !== null) {
+          rl.pause()
+        }
+        processLineByLine(`${path.dirname(inputfile)}/${filename}`, outputfile, 1, false, () => {
+          if (afterPause !== null) {
+            afterPause()
+            rl.resume()
+          }
+        })
+        return true
       default:
         console.error(`Error: Unknown macro "${macro}" in line ${linenum}:`)
         console.error(`  ${rawline}`)
@@ -256,16 +258,16 @@ rl.on('line', function (rawline) {
   } else if (line.substring(0, 2) == "//") {
     // Simply do nothing. Skip it.
   } else if (skipCount == 0) {
-    var resolvedLine = rawline.valueOf()
+    let resolvedLine = rawline.valueOf()
     defines.forEach((e) => {
-      var regex = new RegExp("(\\W|^)" + e.name + "(\\W|$)", "g")
+      let regex = new RegExp("(\\W|^)" + e.name + "(\\W|$)", "g")
       if (rawline.match(regex)) {
         if (debug) {
           console.log(` Current line has define ${e.name}`)
         }
-        var matches = regex.exec(resolvedLine)
-        var newmatches = []
-        var i = 0
+        let matches = regex.exec(resolvedLine)
+        let newmatches = []
+        let i = 0
         matches.forEach((match) => {
           if (match.length >= e.name.length) {
             if (debug) {
@@ -285,13 +287,61 @@ rl.on('line', function (rawline) {
     })
     fs.appendFileSync(outputfile, `${resolvedLine}\n`)
   }
-})
+}
 
-rl.on('close', function () {
-  if (rc == 0) {
-    if (expectEndifCount != 0) {
-      console.log(`Warning: ${expectEndifCount} endifs missing!`)
+function processLineByLine (inputfile, outputfile, _startLine, firstIteration,
+                            onClose) {
+  // Contains leaked lines in case of pause()
+  let tmpbuf = []
+  let paused = false 
+
+  let rl = readline.createInterface({
+    input: fs.createReadStream(inputfile)
+  })
+
+  let linenum = 0
+
+  rl.on('line', (rawline) => {
+    linenum++
+    if (linenum < _startLine) return
+    if (paused) {
+      tmpbuf.push([linenum, rawline])
+      return
     }
+    paused = (processLine(rawline, inputfile, outputfile, rl, linenum, () => {
+      tmpbuf.forEach((l) => {
+        processLine(l[1], inputfile, outputfile, rl, l[0], null)
+      })
+      paused = false
+    }) === true)
+  })
+
+  rl.on('close', () => {
+    if (rc == 0) {
+      if (expectEndifCount != 0) {
+        console.log(`Warning: ${expectEndifCount} endifs missing!`)
+      }
+    }
+    if (firstIteration === true || rc != 0) process.exit(rc)
+    if (onClose !== undefined && onClose !== null) onClose()
+  })
+}
+
+function doWork (inputfile, outputfile, firstIteration, startLine) {
+
+  let _startLine = startLine | 0;
+  !(_startLine > 0) && (_startLine = 1)
+
+  if (!fileExists(inputfile)) {
+    console.error(`Error: File ${inputfile} does not exist`)
+    process.exit(1)
   }
-  process.exit(rc)
-})
+
+  if (firstIteration && fileExists(outputfile)) {
+    fs.unlinkSync(outputfile)
+  }
+  
+  processLineByLine(inputfile, outputfile, _startLine, firstIteration)
+}
+
+doWork(mInputfile, mOutputfile, true)

@@ -1,0 +1,8 @@
+#define nice-thing-to-replace "don't ask me!"
+
+----
+This is from extra.txt
+----
+
+  Importing extra2
+#import extra2.txt

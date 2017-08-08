@@ -1,0 +1,9 @@
+=================
+This is extra2!
+=================
+
+  Below this line should only be one semicolon (in the output file)
+#undef EXAMPLE3
+;
+
+  Below this line it should not say OH NO!

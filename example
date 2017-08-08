@@ -21,9 +21,11 @@
 #define EXAMPLE4 You know
 
 #define HOW_I_AM I'm fine
-#define nice-thing-to-replace "don't ask me!"
 
-#undef EXAMPLE3
+#import extra.txt
+#ifdef EXAMPLE3
+OH NO!
+#endif
 
 I see
 
