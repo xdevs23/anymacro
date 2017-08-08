@@ -312,6 +312,8 @@ function processLineByLine (inputfile, outputfile, _startLine, firstIteration,
       tmpbuf.forEach((l) => {
         processLine(l[1], inputfile, outputfile, rl, l[0], null)
       })
+      // Clear
+      tmpbuf.length = 0
       paused = false
     }) === true)
   })
