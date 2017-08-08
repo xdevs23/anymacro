@@ -338,7 +338,7 @@ function processLineByLine (inputfile, outputfile, _startLine, firstIteration,
 
 function doWork (inputfile, outputfile, firstIteration, startLine) {
 
-  let _startLine = startLine | 0;
+  let _startLine = startLine | 0
   !(_startLine > 0) && (_startLine = 1)
 
   if (!fileExists(inputfile)) {
