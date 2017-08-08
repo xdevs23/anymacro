@@ -20,7 +20,7 @@ const readline = require('readline')
 const fs = require('fs')
 const path = require('path')
 
-const version = '1.2.0'
+const version = '1.3.0'
 
 var rc = 0
 
