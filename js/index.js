@@ -52,8 +52,8 @@ var debug = havearg('-d') || havearg('--debug')
 
 if (debug) console.log("Debug is enabled")
 
-if (argv(0) == '-v') {
-  console.log(`anymacro version ${version}`)
+if (argv(0) == '-v' || argv(0) == "--version") {
+  console.log(`AnyMacro Preprocessor version ${version}`)
   process.exit(0)
 }
 
