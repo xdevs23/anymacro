@@ -81,6 +81,12 @@ function Define (name, value) {
   this.value = value || ''
 }
 
+function FuncDefine (name, args, func) {
+  this.name = name
+  this.args = args
+  this.func = func
+}
+
 var defines = []
 var expectEndifCount = 0
 var skipCount = 0
@@ -125,9 +131,28 @@ function createDefineFromLine (line, rl, linenum) {
   if (debug) {
     console.log(` afterdef: ${afterdef}`)
   }
-  var hasValue = afterdef.indexOf(' ') !== -1
-  var name = afterdef.substring(0, hasValue ? afterdef.indexOf(' ')
-                                            : afterdef.length)
+  let spaceIx = afterdef.indexOf(' ')
+  let brIx = afterdef.indexOf('(')
+  let clBrIx = afterdef.indexOf(')')
+  let isFunc = false
+  if (brIx !== -1 && brIx < spaceIx) {
+    isFunc = true
+    if (clBrIx === -1) {
+      console.error(`Error: Unterminated function definition on line ${linenum}`)
+      console.error(`       Missing ')'.`)
+      console.error(`  ${line}`)
+      rc = 2
+      rl.close()
+      return
+    }
+    if (afterdef.charAt(clBrIx + 1) == ' ') {
+      spaceIx = clBrIx + 1
+    } else {
+      spaceIx = -1
+    }
+  }
+  var hasValue = spaceIx !== -1
+  var name = afterdef.substring(0, hasValue ? spaceIx : afterdef.length)
   if (!name) {
     console.error(`Error: No name specified for define, line ${linenum}`)
     console.error(`  ${line}`)
@@ -135,9 +160,120 @@ function createDefineFromLine (line, rl, linenum) {
     rl.close()
     return
   }
-  var value = hasValue ? afterdef.substring(afterdef.indexOf(' ') + 1,
-                                              afterdef.length) : ''
-  return new Define(name, value)
+  var value = hasValue ? afterdef.substring(spaceIx + 1, afterdef.length)
+                       : ''
+  let args, func, funcName
+  if (isFunc) {
+    funcName = name.substring(0, name.indexOf('(')).trim()
+    args = []
+    let argsStr = name.substring(name.indexOf('(') + 1, name.indexOf(')'))
+    argsStr.split(',').forEach((s) => {
+      let str = s.trim()
+      args.push(str)
+    })
+    func = value
+  }
+  return isFunc ? new FuncDefine(funcName, args, func) : new Define(name, value)
+}
+
+function resolveLine (lineToResolve, linenum) {
+  let resolvedLine = lineToResolve
+  defines.forEach((e) => {
+    if (e.value !== undefined) {
+      let regex = new RegExp("(\\W|^)" + e.name + "(\\W|$)", "g")
+      if (resolvedLine.match(regex)) {
+        if (debug) {
+          console.log(` Current line has define ${e.name}`)
+        }
+        let matches = regex.exec(resolvedLine)
+        let newmatches = []
+        let i = 0
+        matches.forEach((match) => {
+          if (match.length >= e.name.length) {
+            if (debug) {
+              console.log(`   Match ${match}`)
+            }
+            newmatches.push([match.replace(e.name, e.value), i])
+          }
+          i++
+        })
+        i = 0
+        newmatches.forEach((match) => {
+          resolvedLine =
+            resolvedLine.replace(matches[newmatches[i][1]], newmatches[i][0])
+          i++
+        })
+      }
+    } else if (e.func !== undefined) {
+      // Example: \b[()\[\]{},; ]*prnt( *)[(][^,]*[)]
+      let regexStr = "\\b[()\\[\\]{},; ]*?"
+      let replRegexStr = e.name + "( *?)[(]"
+      var i
+      for (i = 0; i < e.args.length; i++) {
+        replRegexStr += "[^,]+?,"
+      }
+      replRegexStr = replRegexStr.substring(0, replRegexStr.length - 1)
+      replRegexStr += "[)]"
+      regexStr += replRegexStr
+      let finalReplRegex = new RegExp(replRegexStr)
+      if (debug) {
+        console.log(`   regexStr: ${regexStr}`)
+      }
+      let regex = new RegExp(regexStr)
+      while (resolvedLine.match(regex)) {
+        if (debug) {
+          console.log(`  ${linenum} uses a function define!`)
+        }
+        let funcBody = e.func.valueOf()
+        if (debug) {
+          console.log(`   Defined function body: ${funcBody}`)
+        }
+        let matches = regex.exec(resolvedLine)
+        if (debug) {
+          console.log(`   All matches: \n${JSON.stringify(matches)}`)
+        }
+        let match = matches[0]
+        if (match === undefined || match === null ||
+              match.trim().length === 0) return
+        if (debug) {
+          console.log(`   Processing match ${match}`)
+        }
+        let lineArgsStr = match.substring(
+                            match.indexOf('(') + 1, match.lastIndexOf(')'))
+        let lineArgs = []
+        if (lineArgsStr.indexOf(',') !== -1) {
+          lineArgsStr.split(',').forEach((lineArg) => {
+            lineArgs.push(lineArg.trim())
+          })
+        } else {
+          lineArgs.push(lineArgsStr.trim())
+        }
+        if (debug) {
+          console.log(`   Line args: ${lineArgs}`)
+        }
+        i = 0
+        e.args.forEach((arg) => {
+          if (debug) {
+            console.log(`    Function body before replace: ${funcBody}`)
+          }
+          let replRegex = new RegExp("\\b" + arg + "\\b", "g")
+          if (debug) {
+            let replRegexMatches = replRegex.exec(funcBody)
+            console.log(`    Repl regex matches: ` +
+                          `${JSON.stringify(replRegexMatches)}`)
+          }
+          funcBody = funcBody.replace(replRegex, lineArgs[i])
+          if (debug) {
+            console.log(`    Replaced ${arg} with ${lineArgs[i]}`)
+            console.log(`    New function body: ${funcBody}\n`)
+          }
+          i++
+        })
+        resolvedLine = resolvedLine.replace(finalReplRegex, funcBody)
+      }
+    }
+  })
+  return resolvedLine
 }
 
 function processLine (rawline, inputfile, outputfile, rl, linenum, afterPause) {
@@ -265,33 +401,12 @@ function processLine (rawline, inputfile, outputfile, rl, linenum, afterPause) {
     }
   }})() === true) return true
   if (skipCount == 0 && printLine) {
-    let resolvedLine = rawline.valueOf()
-    defines.forEach((e) => {
-      let regex = new RegExp("(\\W|^)" + e.name + "(\\W|$)", "g")
-      if (rawline.match(regex)) {
-        if (debug) {
-          console.log(` Current line has define ${e.name}`)
-        }
-        let matches = regex.exec(resolvedLine)
-        let newmatches = []
-        let i = 0
-        matches.forEach((match) => {
-          if (match.length >= e.name.length) {
-            if (debug) {
-              console.log(`   Match ${match}`)
-            }
-            newmatches.push([match.replace(e.name, e.value), i])
-          }
-          i++
-        })
-        i = 0
-        newmatches.forEach((match) => {
-          resolvedLine =
-            resolvedLine.replace(matches[newmatches[i][1]], newmatches[i][0])
-          i++
-        })
-      }
-    })
+    let resolvedLine = resolveLine(rawline.valueOf())
+    let prevResolvedLine
+    while (resolvedLine !== prevResolvedLine) {
+      prevResolvedLine = resolvedLine.valueOf()
+      resolvedLine = resolveLine(prevResolvedLine)
+    }
     fs.appendFileSync(outputfile, `${resolvedLine}\n`)
   }
 }

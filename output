@@ -47,6 +47,9 @@ there
 How are you?
 I'm fine
 
-  printf("don't ask me!")
+  printf("don't ask me!", "%s");
+((8) > (10*4) ? (8) : (10*4))
+((2+2) > (5*4) ? (5*4) : (2+2))
+((2) > (9) ? (2) : (9))
 
 YOU_NEVER_KNOW_HOW_I_AM

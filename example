@@ -19,6 +19,13 @@
 #define EXAMPLE2
 #define EXAMPLE3
 #define EXAMPLE4 You know
+#define prnt(str, fmt) printf(str, fmt)
+#define sup(str) str
+#define COOL_NUM 2
+#define max(a, b) ((a) > (b) ? (a) : (b))
+// Another variant just to make sure we can shuffle the stuff
+#define min(b, a) ((a) > (b) ? (b) : (a))
+#define max2(b, a) max(a, b)
 
 #define HOW_I_AM I'm fine
 
@@ -58,8 +65,11 @@ HOW_I_AM
 #ifdef EX1
 #ifndef EXAMPLE5
 #ifdef EXAMPLE4
-  printf(nice-thing-to-replace)
+  prnt(nice-thing-to-replace, sup("%s"))sup(;)
 #endif
+max(8, 10*4)
+min(5*4, 2+COOL_NUM)
+max2(9, COOL_NUM)
 #endif
 #endif
 
